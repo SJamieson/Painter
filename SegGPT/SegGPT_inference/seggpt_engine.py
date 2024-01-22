@@ -103,7 +103,7 @@ def inference_image(model, device, img_path, img2_paths, tgt2_paths, out_path):
     output.save(out_path)
 
 
-def inference_video(model, device, vid_path, num_frames, img2_paths, tgt2_paths, out_path):
+def inference_video(model, device, vid_path, num_frames, img2_paths, tgt2_paths, out_path, img_path):
     res, hres = 448, 448
 
     cap = cv2.VideoCapture(vid_path)
@@ -115,18 +115,15 @@ def inference_video(model, device, vid_path, num_frames, img2_paths, tgt2_paths,
 
     if img2_paths is None:
         _, frame = cap.read()
-        img2 = Image.fromarray(frame[:, :, ::-1]).convert('RGB')
+        img2 = [np.array(Image.fromarray(frame[:, :, ::-1]).convert('RGB').resize((res, hres))) / 255.]
     else:
-        img2 = Image.open(img2_paths[0]).convert("RGB")
-    img2 = img2.resize((res, hres))
-    img2 = np.array(img2) / 255.
+        img2 = [np.array(Image.open(img2_path).convert("RGB").resize((res, hres))) / 255. for img2_path in img2_paths]
 
-    tgt2 = Image.open(tgt2_paths[0]).convert("RGB")
-    tgt2 = tgt2.resize((res, hres), Image.NEAREST)
-    tgt2 = np.array(tgt2) / 255.
+    tgt2 = [np.array(Image.open(tgt2_path).convert("RGB").resize((res, hres), Image.NEAREST)) / 255. for tgt2_path in tgt2_paths]
 
     frames_cache, target_cache = Cache(num_frames), Cache(num_frames)
 
+    i = 0
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -138,7 +135,7 @@ def inference_video(model, device, vid_path, num_frames, img2_paths, tgt2_paths,
         size = image.size
         image = np.array(image.resize((res, hres))) / 255.
 
-        for prompt, target in zip([img2] + frames_cache, [tgt2] + target_cache):
+        for prompt, target in zip(img2 + frames_cache, tgt2 + target_cache):
             tgt = target  # tgt is not available
             tgt = np.concatenate((target, tgt), axis=0)
             img = np.concatenate((prompt, image), axis=0)
@@ -175,7 +172,9 @@ def inference_video(model, device, vid_path, num_frames, img2_paths, tgt2_paths,
             size=[size[1], size[0]], 
             mode='nearest',
         ).permute(0, 2, 3, 1)[0].numpy()
+        cv2.imwrite(img_path % i, np.ascontiguousarray(output.astype(np.uint8)[:, :, ::-1]))
         output = input_image * (0.6 * output / 255 + 0.4)
         video_writer.write(np.ascontiguousarray(output.astype(np.uint8)[:, :, ::-1]))
+        i += 1
     
     video_writer.release()

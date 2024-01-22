@@ -1,4 +1,7 @@
+*.mp4
 output*
+clean_output/
+.venv/
 *.pth
 **.pyc
 **/__pycache__/**
