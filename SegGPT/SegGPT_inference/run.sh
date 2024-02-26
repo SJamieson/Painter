@@ -1,2 +1,6 @@
-mkdir -p $2
-python seggpt_inference.py --input_video $1 --prompt_image 1688591153-872862892.jpg 1688591169-486241803.jpg 1688591171-811414469.jpg 1688591387-630233946.jpg 1688591605-877366086.jpg --prompt_target 1688591153-872862892-targets.jpg 1688591169-486241803-targets.jpg 1688591171-811414469-targets.jpg 1688591387-630233946-targets.jpg 1688591605-877366086-targets.jpg --output_dir $2
+mkdir -p $4
+PROMPTS=$(ls $2/* -qb)
+TARGETS=$(ls $3/* -qb)
+echo $PROMPTS
+echo $TARGETS
+python seggpt_inference.py --input_video $1 --prompt_image $PROMPTS --prompt_target $TARGETS --output_dir $4
